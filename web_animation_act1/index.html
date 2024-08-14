@@ -1,0 +1,242 @@
+<html>
+<head>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #box, #box2 {
+            position: absolute;
+        }
+        #box {
+            left: 10px;
+            top: 10px;
+        }
+        #box2 {
+            left: 1200px;
+            top: 10px;
+            transform: scaleX(-1); /* Rooster initially faces left */
+        }
+        #box img, #box2 img {
+            height: 150px;
+            width: 160px;
+        }
+        .egg, .chick {
+            position: absolute;
+            height: 55px;
+            width: 40px;
+        }
+        .popOut {
+            animation: popOut 0.5s ease-in-out forwards;
+        }
+        @keyframes popOut {
+            0% {
+                transform: scale(0);
+            }
+            50% {
+                transform: scale(1.5);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="box">
+        <img src="hen.gif" alt="Hen">
+    </div>
+    <div id="box2">
+        <img src="rooster.gif" alt="Rooster">
+    </div>
+    <script>
+        let eggLaid = false;
+        let layingCooldown = false;
+        let eggs = [];
+        let henElement = document.getElementById("box");
+        let roosterElement = document.getElementById("box2");
+        let henRunning = false; // Flag to indicate if the hen is currently running away
+
+        function moveHen() {
+            let step = 10;
+
+            function moveStep() {
+                if (checkCollision(roosterElement, henElement)) {
+                    if (!eggLaid) {
+                        layEgg(henElement); // Lay an egg upon collision
+                        henRunning = true; // Hen starts running
+                    }
+                    let direction = determineEscapeDirection();
+                    moveInDirection(direction, step * 3); // Move faster when running away
+                } else {
+                    let direction = Math.floor(Math.random() * 4);
+                    moveInDirection(direction, step);
+                }
+
+                setTimeout(moveStep, 100);
+            }
+
+            moveStep();
+        }
+
+        function moveInDirection(direction, step) {
+            let screenWidth = window.innerWidth;
+            let screenHeight = window.innerHeight;
+            let leftValue = parseInt(henElement.style.left, 10);
+            let topValue = parseInt(henElement.style.top, 10);
+
+            switch (direction) {
+                case 0: // Left
+                    henElement.style.transform = "scaleX(-1)";
+                    leftValue -= step;
+                    if (leftValue < 0) leftValue = 0;
+                    break;
+                case 1: // Right
+                    henElement.style.transform = "scaleX(1)";
+                    leftValue += step;
+                    if (leftValue > screenWidth - 160) leftValue = screenWidth - 160;
+                    break;
+                case 2: // Up
+                    topValue -= step;
+                    if (topValue < 0) topValue = 0;
+                    break;
+                case 3: // Down
+                    topValue += step;
+                    if (topValue > screenHeight - 150) topValue = screenHeight - 150;
+                    break;
+            }
+
+            henElement.style.left = leftValue + "px";
+            henElement.style.top = topValue + "px";
+
+            // Stop running after a while
+            if (henRunning) {
+                setTimeout(() => henRunning = false, 2000); // Stop running after 2 seconds
+            }
+        }
+
+        function determineEscapeDirection() {
+            let henRect = henElement.getBoundingClientRect();
+            let roosterRect = roosterElement.getBoundingClientRect();
+            // Determine a direction that is away from the rooster
+            if (henRect.left < roosterRect.left) {
+                return henRect.top < roosterRect.top ? 2 : 3; // Up or Down
+            } else {
+                return henRect.top < roosterRect.top ? 0 : 1; // Left or Right
+            }
+        }
+
+        function checkCollision(element1, element2) {
+            let rect1 = element1.getBoundingClientRect();
+            let rect2 = element2.getBoundingClientRect();
+            return !(rect1.right < rect2.left || 
+                     rect1.left > rect2.right || 
+                     rect1.bottom < rect2.top || 
+                     rect1.top > rect2.bottom);
+        }
+
+        function layEgg(henElement) {
+            let henRect = henElement.getBoundingClientRect();
+            let eggX, eggY;
+
+            if (henElement.style.transform === "scaleX(1)") {
+                eggX = henRect.left + henRect.width;
+            } else {
+                eggX = henRect.left - 60;
+            }
+
+            eggY = henRect.top + (henRect.height / 2) - 30;
+
+            let egg = document.createElement("img");
+            egg.src = "egg.png"; 
+            egg.className = "egg";
+            egg.style.left = eggX + "px";
+            egg.style.top = eggY + "px";
+
+            document.body.appendChild(egg);
+            eggs.push(egg);
+
+            // Start the cracking process after a delay
+            setTimeout(() => crackEgg(egg), 3000);
+
+            eggLaid = true;
+            layingCooldown = true;
+
+            setTimeout(() => {
+                layingCooldown = false;
+                eggLaid = false;
+            }, 2000);
+        }
+
+        function crackEgg(eggElement) {
+            eggElement.src = "eggcrack.png"; // Replace with cracked egg image
+
+            // After cracking, hatch the chick
+            setTimeout(() => {
+                eggElement.src = "chick1.gif"; // Replace with chick image
+                eggElement.className = "chick popOut"; // Add the pop-out effect class
+                eggElement.style.height = "60px";
+                eggElement.style.width = "60px";
+            }, 2000); // Chick pops out after 2 seconds
+        }
+
+        function moveRooster(e) {
+            let element1 = roosterElement;
+            let elementWidth = element1.offsetWidth;
+            let elementHeight = element1.offsetHeight;
+            let screenWidth = window.innerWidth;
+            let screenHeight = window.innerHeight;
+
+            switch (e.keyCode) {
+                case 37: // Left 
+                    element1.style.transform = "scaleX(-1)";
+                    let leftValue = parseInt(element1.style.left || 1200, 10) - 10;
+                    if (leftValue + elementWidth < 0) {
+                        leftValue = screenWidth;
+                    }
+                    element1.style.left = leftValue + "px";
+                    break;
+                case 39: // Right 
+                    element1.style.transform = "scaleX(1)";
+                    let rightValue = parseInt(element1.style.left || 1200, 10) + 10;
+                    if (rightValue > screenWidth) {
+                        rightValue = -elementWidth;
+                    }
+                    element1.style.left = rightValue + "px";
+                    break;
+                case 38: // Up 
+                    let topValue = parseInt(element1.style.top || 0, 10) - 10;
+                    if (topValue + elementHeight < 0) {
+                        topValue = screenHeight;
+                    }
+                    element1.style.top = topValue + "px";
+                    break;
+                case 40: // Down 
+                    let downValue = parseInt(element1.style.top || 0, 10) + 10;
+                    if (downValue > screenHeight) {
+                        downValue = -elementHeight;
+                    }
+                    element1.style.top = downValue + "px";
+                    break;
+            }
+
+            if (checkCollision(roosterElement, henElement) && !eggLaid && !layingCooldown) {
+                layEgg(henElement);
+                eggLaid = true;
+                layingCooldown = true;
+
+                setTimeout(() => {
+                    layingCooldown = false;
+                    eggLaid = false;
+                }, 2000);
+            }
+        }
+
+        document.onkeydown = moveRooster;
+        moveHen(); // Start hen movement
+    </script>
+</body>
+</html>
